@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # llama-power-sampler.sh — sample GPU/CPU power every 30 seconds.
 # Runs as a background process; writes to llama-energy.json.
-# Usage: bash llama-power-sampler.sh (runs in loop)
+# Every 5 minutes, also writes a time-series snapshot for graphing.
 
 ENERGY_STATE="$HOME/.hermes/llama-energy.json"
+SNAPSHOT_SCRIPT="$HOME/.hermes/scripts/llama-snapshot.sh"
 
 # Initialize state file
 if [ ! -f "$ENERGY_STATE" ]; then
   echo '{"cumulative_wh": 0, "last_amd_watts": 0, "last_nvidia_watts": 0, "last_ts": 0}' > "$ENERGY_STATE"
 fi
 
+SAMPLES=0
 while true; do
   NOW=$(date +%s)
 
@@ -60,6 +62,12 @@ while true; do
     --argjson ts "$NOW" \
     '.cumulative_wh = $wh | .last_amd_watts = $amd | .last_nvidia_watts = $nvidia | .last_ts = $ts' \
     "$ENERGY_STATE" > "$ENERGY_STATE.tmp" && mv "$ENERGY_STATE.tmp" "$ENERGY_STATE"
+
+  # Snapshot every 5 minutes (300 seconds = 10 samples at 30s intervals)
+  SAMPLES=$((SAMPLES + 1))
+  if [ $((SAMPLES % 10)) -eq 0 ] && [ -x "$SNAPSHOT_SCRIPT" ]; then
+    bash "$SNAPSHOT_SCRIPT" 2>/dev/null
+  fi
 
   sleep 30
 done
