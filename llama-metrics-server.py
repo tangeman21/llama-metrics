@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 TOKENS_FILE = os.path.expanduser("~/.hermes/llama-tokens.json")
 ENERGY_FILE = os.path.expanduser("~/.hermes/llama-energy.json")
-SNAPSHOT_FILE = os.path.expanduser("~/.hermes/llama-snapshots.jsonl")
+SNAPSHOT_DB = os.path.expanduser("~/.hermes/llama-snapshots.db")
 LLAMA_URL = "http://localhost:8018/metrics"
 
 HTML = """<!DOCTYPE html>
@@ -422,20 +422,19 @@ class MetricsHandler(http.server.BaseHTTPRequestHandler):
             return {}
 
     def read_snapshots(self):
-        """Read time-series snapshots from JSONL file."""
-        snapshots = []
+        """Read time-series snapshots from SQLite."""
         try:
-            with open(SNAPSHOT_FILE) as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        try:
-                            snapshots.append(json.loads(line))
-                        except json.JSONDecodeError:
-                            continue
-        except FileNotFoundError:
+            conn = sqlite3.connect(SNAPSHOT_DB)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT * FROM snapshots ORDER BY epoch DESC LIMIT 5000"
+            ).fetchall()
+            conn.close()
+            # Return in chronological order
+            result = [dict(r) for r in reversed(rows)]
+            return result
+        except (FileNotFoundError, sqlite3.OperationalError):
             return []
-        return snapshots
 
 
 if __name__ == '__main__':

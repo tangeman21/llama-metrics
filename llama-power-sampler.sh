@@ -4,7 +4,7 @@
 # Every 5 minutes, also writes a time-series snapshot for graphing.
 
 ENERGY_STATE="$HOME/.hermes/llama-energy.json"
-SNAPSHOT_SCRIPT="$HOME/.hermes/scripts/llama-snapshot.sh"
+SNAPSHOT_SCRIPT="$HOME/.hermes/scripts/llama-snapshot.py"
 
 # Initialize state file
 if [ ! -f "$ENERGY_STATE" ]; then
